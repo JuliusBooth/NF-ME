@@ -21,3 +21,12 @@ To sign a message
 ```sh
 NF-Me -s
 ```
+
+Arguments:
+
+-h --help Print help information
+-c --create public key  
+ -s --sign message  
+ -v --verify message  
+ -p --public key file name
+-f --signature file name

@@ -2,6 +2,9 @@ package file
 
 import (
 	"bufio"
+	"crypto/ecdsa"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"os"
 
@@ -25,9 +28,7 @@ func GetPasswordInput() string {
 	return string(password)
 }
 
-
-func SaveSignature(signature []byte) {
-	fileName := ReadFileName()
+func SaveSignature(signature []byte, fileName string) {
 	file, err := os.Create(fileName)
 	if err != nil {
 		fmt.Println(err)
@@ -35,4 +36,68 @@ func SaveSignature(signature []byte) {
 	}
 	defer file.Close()
 	file.Write(signature)
+}
+
+func GetSignatureFromFile(fileName *string) []byte {
+	file, err := os.Open(*fileName)
+	if err != nil {
+		fmt.Println(err)
+		return []byte{}
+	}
+	defer file.Close()
+
+	info, _ := file.Stat()
+	size := info.Size()
+	pemBytes := make([]byte, size)
+	buffer := bufio.NewReader(file)
+	_, err = buffer.Read(pemBytes)
+	if err != nil{
+		fmt.Println(err)
+		return []byte{}
+	}
+	return pemBytes
+}
+
+func GetPublicKeyFromFile(fileName *string) ecdsa.PublicKey {
+	file, err := os.Open(*fileName)
+	if err != nil {
+		fmt.Println(err)
+		return ecdsa.PublicKey{}
+	}
+	defer file.Close()
+	info, _ := file.Stat()
+	size := info.Size()
+	pemBytes := make([]byte, size)
+	buffer := bufio.NewReader(file)
+	_, err = buffer.Read(pemBytes)
+	if err != nil {
+		fmt.Println(err)
+		return ecdsa.PublicKey{}
+	}
+	data, _ := pem.Decode([]byte(pemBytes))
+	publicKey, _ := x509.ParsePKIXPublicKey(data.Bytes)
+	return *publicKey.(*ecdsa.PublicKey)
+}
+
+func SavePublicKey(publicKey ecdsa.PublicKey, fileName string) {
+	file, err := os.Create(fileName)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer file.Close()
+
+	publicKeyBytes, _ := x509.MarshalPKIXPublicKey(&publicKey)
+	block := &pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: publicKeyBytes,
+	}
+	pem.Encode(file, block)
+}
+
+func GetMessageToVerify() string {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter message to verify: ")
+	message, _ := reader.ReadString('\n')
+	return message
 }
